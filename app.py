@@ -3,23 +3,23 @@ import google.generativeai as genai
 import pandas as pd
 import numpy as np
 
-# 1. Page Configuration (Must be the absolute first Streamlit command)
+# 1. Page Configuration
 st.set_page_config(
    page_title="ExamZen",
    layout="wide",
    initial_sidebar_state="collapsed"
 )
 
-# 2. Configure Gemini API Key Safely
+# 2. Configure Gemini API Key
 if "GEMINI_API_KEY" in st.secrets:
    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 else:
-   st.error("Missing API Key! Please verify GEMINI_API_KEY inside your Streamlit Cloud secrets configuration panel.")
+   st.error("Missing API Key! Please verify GEMINI_API_KEY inside your Streamlit Cloud secrets.")
 
-# FIX: Added 'models/' prefix to fully qualify the path and clear the 400 error
-model = genai.GenerativeModel('models/gemini-1.5-flash-001')
+# 3. Model Initialization (Clean, Standard Format)
+model = genai.GenerativeModel('gemini-1.5-flash')
 
-# 3. Inject Your Custom UI Theme Variables & Global Styles
+# 4. Custom UI Theme Variables & Global Styles
 st.markdown("""
 <style>
 :root {
@@ -32,10 +32,8 @@ st.markdown("""
    --text-secondary: #94A3B8;
    --text-muted: #64748B;
    --radius-md: 12px;
-   --radius-lg: 16px;
 }
 
-/* APP BASE RESET */
 html, body, [class*="css"] {
    font-family: 'Plus Jakarta Sans', sans-serif !important;
    color: var(--text-secondary) !important;
@@ -45,17 +43,14 @@ html, body, [class*="css"] {
    background: var(--bg-base) !important;
 }
 
-/* HIDE STREAMLIT BRANDING AND NAVIGATION FOOTERS */
 header, [data-testid="collapsedControl"], .stDeployButton, footer, #MainMenu {
    display: none !important;
 }
 
-/* APP WINDOW WIDTH LOCK */
 .block-container {
    padding: 1rem 1rem 3rem 1rem !important;
 }
 
-/* Custom Component Layout Styles */
 .header-bar {
    display: flex;
    justify-content: space-between;
@@ -81,7 +76,6 @@ header, [data-testid="collapsedControl"], .stDeployButton, footer, #MainMenu {
    font-weight: 600;
 }
 
-/* Metrics and Dashboard Cards */
 .dashboard-card {
    background-color: var(--bg-surface);
    padding: 1.25rem;
@@ -105,7 +99,7 @@ header, [data-testid="collapsedControl"], .stDeployButton, footer, #MainMenu {
 </style>
 """, unsafe_allow_html=True)
 
-# 4. Global Navigation Header Elements
+# 5. Global Navigation Header
 st.markdown("""
 <div class="header-bar">
    <div class="brand-title">🎓 ExamZen</div>
@@ -113,48 +107,33 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# 5. Initialize App Structure Navigation Tabs
+# 6. Navigation Tabs
 tabs = st.tabs(["Hub", "Mentor Chat", "Correctify AI", "Review"])
 
-# --- TAB 1: HUB (Dashboard Overview) ---
+# --- TAB 1: HUB ---
 with tabs[0]:
    st.markdown("<h3 style='color: #F1F5F9; margin-bottom: 20px;'>ExamZen Core Hub</h3>", unsafe_allow_html=True)
    
    col1, col2, col3 = st.columns(3)
    with col1:
-       st.markdown("""
-       <div class="dashboard-card">
-           <div class="card-title">🔥 Current Study Streak</div>
-           <div class="card-value">12 Days</div>
-       </div>
-       """, unsafe_allow_html=True)
+       st.markdown('<div class="dashboard-card"><div class="card-title">🔥 Current Study Streak</div><div class="card-value">12 Days</div></div>', unsafe_allow_html=True)
    with col2:
-       st.markdown("""
-       <div class="dashboard-card">
-           <div class="card-title">🎯 Solutions Scanned</div>
-           <div class="card-value">47 Problems</div>
-       </div>
-       """, unsafe_allow_html=True)
+       st.markdown('<div class="dashboard-card"><div class="card-title">🎯 Solutions Scanned</div><div class="card-value">47 Problems</div></div>', unsafe_allow_html=True)
    with col3:
-       st.markdown("""
-       <div class="dashboard-card">
-           <div class="card-title">⚡ Conceptual Accuracy</div>
-           <div class="card-value">84.2%</div>
-       </div>
-       """, unsafe_allow_html=True)
+       st.markdown('<div class="dashboard-card"><div class="card-title">⚡ Conceptual Accuracy</div><div class="card-value">84.2%</div></div>', unsafe_allow_html=True)
 
    st.markdown("<h4 style='color: #F1F5F9; margin-top: 15px;'>Recent Core Tasks</h4>", unsafe_allow_html=True)
-   st.info("💡 Tip: Use the **Mentor Chat** tab to instantly break down any complex formulas or theorems you find confusing.")
+   st.info("💡 Tip: Use the Mentor Chat tab to break down complex formulas.")
    
    st.checkbox("Review Organic Chemistry reaction mechanisms", value=True)
    st.checkbox("Analyze calculus derivation errors in Correctify AI", value=False)
    st.checkbox("Complete Mock Physics Assessment Set 3", value=False)
 
 
-# --- TAB 2: MENTOR CHAT (Interactive AI Chat) ---
+# --- TAB 2: MENTOR CHAT ---
 with tabs[1]:
    st.markdown("<h2 style='color: #F1F5F9; margin-bottom: 4px;'>Arya Core Mentorship</h2>", unsafe_allow_html=True)
-   st.markdown("<p style='color: #94A3B8; margin-bottom: 24px;'>Ask questions about formulas, mechanisms, or theorems across Physics, Chemistry, Math, and Biology.</p>", unsafe_allow_html=True)
+   st.markdown("<p style='color: #94A3B8; margin-bottom: 24px;'>Ask questions about formulas across Physics, Chemistry, Math, and Biology.</p>", unsafe_allow_html=True)
    
    if "chat_history" not in st.session_state:
        st.session_state.chat_history = []
@@ -183,67 +162,50 @@ with tabs[1]:
        st.rerun()
 
 
-# --- TAB 3: CORRECTIFY AI (Derivation Error Checker) ---
+# --- TAB 3: CORRECTIFY AI ---
 with tabs[2]:
    st.markdown("<h3 style='color: #F1F5F9; margin-bottom: 4px;'>Correctify AI Engine</h3>", unsafe_allow_html=True)
-   st.markdown("<p style='color: #94A3B8; margin-bottom: 20px;'>Submit problem steps here to parse runtime logical flow errors, calculation slips, or derivation mistakes.</p>", unsafe_allow_html=True)
+   st.markdown("<p style='color: #94A3B8; margin-bottom: 20px;'>Submit problem steps here to parse mistakes.</p>", unsafe_allow_html=True)
    
-   problem_statement = st.text_area("1. Paste the Question / Problem Statement:", placeholder="e.g., Integrate x*ln(x) dx...")
-   user_steps = st.text_area("2. Paste your Step-by-Step Working / Derivation:", placeholder="Step 1: ...\nStep 2: ...", height=200)
+   problem_statement = st.text_area("1. Paste the Question:", placeholder="e.g., Integrate x*ln(x) dx...")
+   user_steps = st.text_area("2. Paste your Working:", placeholder="Step 1: ...\nStep 2: ...", height=200)
    
    if st.button("Analyze Derivation Flow", type="primary", use_container_width=True):
        if not problem_statement or not user_steps:
-           st.warning("Please fill out both the problem statement and your derivation steps to execute the analysis.")
+           st.warning("Please fill out both boxes.")
        else:
            with st.spinner("Scanning logic matrices for errors..."):
-               prompt = f"""
-               You are an elite academic evaluator. Analyze the following problem and user-provided working steps for any errors.
-               
-               Problem Statement:
-               {problem_statement}
-               
-               User's Steps:
-               {user_steps}
-               
-               Provide a clear, formatted breakdown highlighting where any mistake occurs and how to fix it.
-               """
+               prompt = f"Analyze the following problem and working steps for errors.\nProblem: {problem_statement}\nSteps: {user_steps}"
                try:
                    analysis_response = model.generate_content(prompt)
-                   st.markdown("<h4 style='color: #F1F5F9; margin-top: 20px;'>AI Correctify Analysis Report:</h4>", unsafe_allow_html=True)
+                   st.markdown("<h4 style='color: #F1F5F9; margin-top: 20px;'>Report:</h4>", unsafe_allow_html=True)
                    st.info(analysis_response.text)
                except Exception as api_err:
-                   st.error(f"Execution Exception encountered during parsing: {api_err}")
+                   st.error(f"Error: {api_err}")
 
 
-# --- TAB 4: REVIEW (Analytical Metrics & Flagged Items) ---
+# --- TAB 4: REVIEW ---
 with tabs[3]:
    st.markdown("<h3 style='color: #F1F5F9; margin-bottom: 4px;'>Performance Analytical Review</h3>", unsafe_allow_html=True)
-   st.markdown("<p style='color: #94A3B8; margin-bottom: 20px;'>Track performance metrics and concepts flagged for critical revision.</p>", unsafe_allow_html=True)
    
    chart_data = pd.DataFrame(
        np.random.randint(65, 98, size=(10, 3)),
-       columns=['Physics Accuracy', 'Chemistry Accuracy', 'Math Accuracy']
+       columns=['Physics', 'Chemistry', 'Math']
    )
    
    col_graph, col_list = st.columns([2, 1])
    
    with col_graph:
-       st.markdown("<b style='color: #F1F5F9;'>Accuracy Metrics Timeline (Last 10 Sessions)</b>", unsafe_allow_html=True)
+       st.markdown("<b style='color: #F1F5F9;'>Accuracy Timeline</b>", unsafe_allow_html=True)
        st.line_chart(chart_data)
        
    with col_list:
-       st.markdown("<b style='color: #F1F5F9;'>🚨 Flagged Concept Focus</b>", unsafe_allow_html=True)
+       st.markdown("<b style='color: #F1F5F9;'>🚨 Flagged Concepts</b>", unsafe_allow_html=True)
        st.markdown("""
        <div class="dashboard-card" style="border-left: 4px solid var(--rose);">
-           <span style="color: #F1F5F9; font-weight:600;">Integration by Parts</span><br/>
-           <span style="font-size:12px; color: var(--text-secondary);">Flagged 3 times via Correctify AI</span>
+           <span style="color: #F1F5F9; font-weight:600;">Integration by Parts</span>
        </div>
        <div class="dashboard-card" style="border-left: 4px solid var(--rose);">
-           <span style="color: #F1F5F9; font-weight:600;">Le Chatelier's Principle</span><br/>
-           <span style="font-size:12px; color: var(--text-secondary);">Flagged 2 times via Mentor Chat</span>
-       </div>
-       <div class="dashboard-card" style="border-left: 4px solid var(--blue);">
-           <span style="color: #F1F5F9; font-weight:600;">Rotational Kinematics</span><br/>
-           <span style="font-size:12px; color: var(--text-secondary);">Marked for standard weekly review</span>
+           <span style="color: #F1F5F9; font-weight:600;">Le Chatelier's Principle</span>
        </div>
        """, unsafe_allow_html=True)
