@@ -91,11 +91,11 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# 6. Streamlined Dynamic Navigation (Removed fake Hub/Review tabs entirely)
+# 6. Streamlined Dynamic Navigation
 tabs = st.tabs(["💬 Arya Mentor Chat", "🔍 Correctify AI Engine"])
 
 
-# --- TAB 1: ARYA MENTOR CHAT (Now your primary landing interface) ---
+# --- TAB 1: ARYA MENTOR CHAT ---
 with tabs[0]:
    st.markdown("<h2 style='color: #F1F5F9; margin-bottom: 4px;'>Arya Core Mentorship</h2>", unsafe_allow_html=True)
    st.markdown("<p style='color: #94A3B8; margin-bottom: 24px;'>Ask complex questions about formulas, proofs, structures, or theorems across STEM subjects.</p>", unsafe_allow_html=True)
@@ -127,7 +127,7 @@ with tabs[0]:
        st.rerun()
 
 
-# --- TAB 2: CORRECTIFY AI (Derivation Step Validator) ---
+# --- TAB 2: CORRECTIFY AI ---
 with tabs[1]:
    st.markdown("<h3 style='color: #F1F5F9; margin-bottom: 4px;'>Correctify AI Engine</h3>", unsafe_allow_html=True)
    st.markdown("<p style='color: #94A3B8; margin-bottom: 20px;'>Input math proofs or chemical mechanisms below to locate step-by-step logic gaps.</p>", unsafe_allow_html=True)
@@ -147,4 +147,3 @@ with tabs[1]:
                    st.info(analysis_response.text)
                except Exception as api_err:
                    st.error(f"Parsing Failure: {api_err}")
-!
