@@ -1,199 +1,135 @@
 import streamlit as st
 import google.generativeai as genai
+import pandas as pd
+import json
+import os
+from datetime import datetime
 
-# 1. Page Configuration
-st.set_page_config(
-   page_title="ExamZen",
-   layout="wide",
-   initial_sidebar_state="collapsed"
-)
+# --- 1. App Configuration & Premium UI Setup ---
+st.set_page_config(page_title="Apex AI Coach Pro", page_icon="📈", layout="wide")
 
-# 2. Configure Gemini API Key
-if "GEMINI_API_KEY" in st.secrets:
-   genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-else:
-   st.error("Missing API Key! Please verify GEMINI_API_KEY inside your Streamlit Cloud secrets.")
+# --- 2. API Key Management ---
+API_KEY = os.environ.get("GEMINI_API_KEY")
+if not API_KEY:
+    st.error("🔒 **Enterprise Security Lock:** Please set your `GEMINI_API_KEY` as an environment variable to access the coaching engine.")
+    st.stop()
 
-# 3. Model Initialization (Modern Endpoint)
-model = genai.GenerativeModel('gemini-3.5-flash')
+genai.configure(api_key=API_KEY)
 
-# 4. Custom Premium Dark Theme Styles
-st.markdown("""
-<style>
-:root {
-   --bg-base: #0B0F19;
-   --bg-surface: #1E293B;
-   --rose: #F43F5E;
-   --blue: #3B82F6;
-   --emerald: #10B981;
-   --text-primary: #F1F5F9;
-   --text-secondary: #94A3B8;
-   --radius-md: 12px;
+# --- 3. Premium Feature: Multi-Persona Engine ---
+PERSONAS = {
+    "The Taskmaster (Productivity & Academics)": """
+        You are an elite, highly demanding academic and productivity coach. 
+        Focus strictly on time-blocking, deep work protocols (like Pomodoro), and ruthless elimination of distractions. 
+        Do not coddle the user. Use bullet points, bold text for emphasis, and actionable checklists.
+    """,
+    "The Biohacker (Nutrition & Fitness)": """
+        You are an advanced sports nutritionist and biohacking coach. 
+        Focus entirely on optimizing physical performance, sleep architecture, and macronutrient timing. 
+        Prioritize high-protein, plant-based diets and evidence-based workout protocols (hypertrophy, VO2 max).
+    """,
+    "The Zen Mentor (Mindset & Burnout Recovery)": """
+        You are a psychological resilience and mindset coach. 
+        Your goal is to prevent burnout during intense study or work periods. 
+        Focus on breathwork, cognitive reframing, stoic philosophy, and sustainable pacing. Speak calmly and empathetically.
+    """
 }
 
-html, body, [class*="css"] {
-   font-family: 'Plus Jakarta Sans', sans-serif !important;
-   color: var(--text-secondary) !important;
-}
+# --- 4. Persistent State & Database Simulation ---
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "metrics" not in st.session_state:
+    # Simulating a database of user progress
+    st.session_state.metrics = pd.DataFrame({
+        "Date": pd.date_range(start="2024-05-24", periods=7),
+        "Study Hours": [4, 5, 3, 6, 7, 5, 8],
+        "Protein (g)": [120, 130, 110, 140, 135, 125, 150],
+        "Sleep (hrs)": [7, 6.5, 8, 7.5, 6, 7, 8]
+    }).set_index("Date")
+if "current_model" not in st.session_state:
+    st.session_state.current_model = None
 
-.stApp {
-   background: var(--bg-base) !important;
-}
+# --- 5. Sidebar Dashboard (The "Expensive" Feel) ---
+with st.sidebar:
+    st.title("⚙️ Apex Control Center")
+    
+    st.markdown("### 🧬 Select Your Coach")
+    selected_persona = st.selectbox("Current Active Module:", list(PERSONAS.keys()))
+    
+    # Initialize or update model if persona changes
+    if st.session_state.get("last_persona") != selected_persona:
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash",
+            system_instruction=PERSONAS[selected_persona]
+        )
+        st.session_state.chat_session = model.start_chat(history=[])
+        st.session_state.last_persona = selected_persona
+        # Optional: clear chat when switching coaches to keep context clean
+        # st.session_state.messages = [] 
+        st.toast(f"Switched to: {selected_persona}", icon="🔄")
 
-header, [data-testid="collapsedControl"], .stDeployButton, footer, #MainMenu {
-   display: none !important;
-}
+    st.divider()
+    
+    # KPI Tracking Feature
+    st.markdown("### 📊 Daily KPI Tracker")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric(label="Study Target", value="8 hrs", delta="1.5 hrs", delta_color="normal")
+    with col2:
+        st.metric(label="Protein Intake", value="150g", delta="20g", delta_color="normal")
+        
+    st.divider()
+    
+    # Export Feature
+    st.markdown("### 📥 Session Export")
+    if len(st.session_state.messages) > 0:
+        chat_transcript = "\n\n".join([f"{msg['role'].upper()}: {msg['content']}" for msg in st.session_state.messages])
+        st.download_button(
+            label="Download Action Plan",
+            data=chat_transcript,
+            file_name=f"Apex_Plan_{datetime.now().strftime('%Y%m%d')}.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
 
-.block-container {
-   padding: 1.5rem 1rem 3rem 1rem !important;
-}
+# --- 6. Main Content Area ---
+# Using tabs to separate the Chat from the Analytics dashboard
+tab1, tab2 = st.tabs(["💬 Coaching Console", "📈 Performance Analytics"])
 
-.header-bar {
-   display: flex;
-   justify-content: space-between;
-   align-items: center;
-   padding-bottom: 1.5rem;
-   margin-bottom: 1.5rem;
-   border-bottom: 1px solid #1E293B;
-}
-.brand-title {
-   color: var(--text-primary);
-   font-size: 26px;
-   font-weight: 700;
-   display: flex;
-   align-items: center;
-   gap: 8px;
-}
-.status-badge {
-   background-color: rgba(16, 185, 129, 0.1);
-   color: var(--emerald);
-   padding: 6px 14px;
-   border-radius: 30px;
-   font-size: 13px;
-   font-weight: 600;
-}
+with tab1:
+    st.header(f"Active Session: {selected_persona.split('(')[0]}")
+    
+    # Display chat history
+    for msg in st.session_state.messages:
+        avatar = "🧑‍💻" if msg["role"] == "user" else "🤖"
+        with st.chat_message(msg["role"], avatar=avatar):
+            st.markdown(msg["content"])
 
-.dashboard-card {
-   background-color: var(--bg-surface);
-   padding: 1.25rem;
-   border-radius: var(--radius-md);
-   border: 1px solid #334155;
-   margin-bottom: 1rem;
-}
-</style>
-""", unsafe_allow_html=True)
+    # Input handling
+    if prompt := st.chat_input("Enter your blockages, questions, or updates..."):
+        with st.chat_message("user", avatar="🧑‍💻"):
+            st.markdown(prompt)
+        st.session_state.messages.append({"role": "user", "content": prompt})
 
-# 5. Global Navigation Header
-st.markdown("""
-<div class="header-bar">
-   <div class="brand-title">🎓 ExamZen AI</div>
-   <div class="status-badge">● AI Core Online</div>
-</div>
-""", unsafe_allow_html=True)
+        with st.chat_message("assistant", avatar="🤖"):
+            try:
+                with st.spinner("Analyzing protocol..."):
+                    response = st.session_state.chat_session.send_message(prompt)
+                    st.markdown(response.text)
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
+            except Exception as e:
+                st.error(f"System Error: {e}")
 
-# 6. Set Up 4 Functional Tabs
-tabs = st.tabs([
-   "💬 Arya Mentor Chat",
-   "🔍 Correctify AI Engine",
-   "⚡ AI Flashcard Gen",
-   "📅 Smart Study Planner"
-])
-
-
-# --- TAB 1: ARYA MENTOR CHAT ---
-with tabs[0]:
-   st.markdown("<h2 style='color: #F1F5F9; margin-bottom: 4px;'>Arya Core Mentorship</h2>", unsafe_allow_html=True)
-   st.markdown("<p style='color: #94A3B8; margin-bottom: 24px;'>Ask complex questions about formulas, proofs, structures, or theorems across STEM subjects.</p>", unsafe_allow_html=True)
-   
-   if "chat_history" not in st.session_state:
-       st.session_state.chat_history = []
-       
-   for msg in st.session_state.chat_history:
-       with st.chat_message(msg["role"]):
-           st.markdown(msg["content"])
-           
-   if user_query := st.chat_input("Ask Arya to unpack a concept..."):
-       st.session_state.chat_history.append({"role": "user", "content": user_query})
-       with st.chat_message("user"):
-           st.markdown(user_query)
-           
-       try:
-           with st.chat_message("assistant"):
-               with st.spinner("Compiling structural insights..."):
-                   response = model.generate_content(user_query)
-                   st.markdown(response.text)
-                   st.session_state.chat_history.append({"role": "assistant", "content": response.text})
-       except Exception as api_err:
-           st.error(f"Core Engine Error: {api_err}")
-           
-   st.write("")
-   if st.button("Reset Chat Stream", key="reset_chat"):
-       st.session_state.chat_history = []
-       st.rerun()
-
-
-# --- TAB 2: CORRECTIFY AI ---
-with tabs[1]:
-   st.markdown("<h3 style='color: #F1F5F9; margin-bottom: 4px;'>Correctify AI Engine</h3>", unsafe_allow_html=True)
-   st.markdown("<p style='color: #94A3B8; margin-bottom: 20px;'>Input math proofs or chemical mechanisms below to locate step-by-step logic gaps.</p>", unsafe_allow_html=True)
-   
-   problem_statement = st.text_area("1. Target Question or Formula:", placeholder="e.g., Solve the integration of x * ln(x) dx...")
-   user_steps = st.text_area("2. Your Complete Working Workflow:", placeholder="Step 1: ...\nStep 2: ...", height=180)
-   
-   if st.button("Analyze Logic Breakdown", type="primary", use_container_width=True):
-       if not problem_statement or not user_steps:
-           st.warning("Both parameters are essential to execute an analysis report.")
-       else:
-           with st.spinner("Scanning data matrices for calculation errors..."):
-               prompt = f"Analyze this problem and working steps for any logical or mathematical errors:\nProblem: {problem_statement}\nSteps: {user_steps}"
-               try:
-                   analysis_response = model.generate_content(prompt)
-                   st.markdown("<h4 style='color: #F1F5F9; margin-top: 20px;'>Analysis Matrix Feedback:</h4>", unsafe_allow_html=True)
-                   st.info(analysis_response.text)
-               except Exception as api_err:
-                   st.error(f"Parsing Failure: {api_err}")
-
-
-# --- TAB 3: AI FLASHCARD & QUIZ GENERATOR (NEW FEATURE) ---
-with tabs[2]:
-   st.markdown("<h3 style='color: #F1F5F9; margin-bottom: 4px;'>⚡ AI Flashcard & Quiz Builder</h3>", unsafe_allow_html=True)
-   st.markdown("<p style='color: #94A3B8; margin-bottom: 20px;'>Turn any topic or syllabus chapter into an instant revision quiz.</p>", unsafe_allow_html=True)
-   
-   quiz_topic = st.text_input("Enter study topic or chapter:", placeholder="e.g., Photosynthesis Light Reactions, Quadratic Equations...")
-   quiz_difficulty = st.select_slider("Select Quiz Difficulty Level:", options=["Beginner", "Intermediate", "Advanced"])
-   
-   if st.button("Generate Interactive Revision Kit", type="primary"):
-       if not quiz_topic:
-           st.warning("Please specify a topic to build flashcards.")
-       else:
-           with st.spinner("Formulating test modules..."):
-               quiz_prompt = f"Create a set of 3 flashcards (Question and Answer) and 2 multiple-choice questions for the topic: '{quiz_topic}' at an '{quiz_difficulty}' academic difficulty level. Format it beautifully with clear titles."
-               try:
-                   quiz_response = model.generate_content(quiz_prompt)
-                   st.markdown("<h4 style='color: #F1F5F9; margin-top: 20px;'>Your Personalized Study Kit:</h4>", unsafe_allow_html=True)
-                   st.markdown(quiz_response.text)
-               except Exception as api_err:
-                   st.error(f"Failed to generate quiz: {api_err}")
-
-
-# --- TAB 4: SMART STUDY PLANNER (NEW FEATURE) ---
-with tabs[3]:
-   st.markdown("<h3 style='color: #F1F5F9; margin-bottom: 4px;'>📅 Smart Study Route Planner</h3>", unsafe_allow_html=True)
-   st.markdown("<p style='color: #94A3B8; margin-bottom: 20px;'>Tell the AI your time limits to generate a custom, realistic preparation itinerary.</p>", unsafe_allow_html=True)
-   
-   subject_name = st.text_input("What subject or exam are you prepping for?", placeholder="e.g., Final Term Physics, Calculus Midterm...")
-   days_left = st.number_input("How many days do you have left to prepare?", min_value=1, max_value=60, value=7)
-   hours_per_day = st.slider("How many hours can you commit each day?", min_value=1, max_value=12, value=3)
-   
-   if st.button("Generate Tactical Study Plan", type="primary"):
-       if not subject_name:
-           st.warning("Please provide a subject or exam target name.")
-       else:
-           with st.spinner("Structuring optimized timetable..."):
-               planner_prompt = f"Design a highly realistic day-by-day study schedule for an upcoming '{subject_name}' exam. The student has exactly {days_left} days left, and can study for {hours_per_day} hours per day. Break down what areas they should focus on each day to avoid burnout."
-               try:
-                   planner_response = model.generate_content(planner_prompt)
-                   st.markdown("<h4 style='color: #F1F5F9; margin-top: 20px;'>Your Strategic Blueprint:</h4>", unsafe_allow_html=True)
-                   st.markdown(planner_response.text)
-               except Exception as api_err:
-                   st.error(f"Failed to assemble timeline: {api_err}")
+with tab2:
+    st.header("Weekly Performance Telemetry")
+    st.markdown("Review your trailing 7-day data across key lifestyle and academic metrics.")
+    
+    # Render an interactive line chart based on our mock database
+    st.line_chart(st.session_state.metrics, use_container_width=True)
+    
+    # Provide a data editor for the user to manually input today's stats
+    st.markdown("### 📝 Log Today's Data")
+    edited_df = st.data_editor(st.session_state.metrics, num_rows="dynamic", use_container_width=True)
+    if st.button("Save Telemetry"):
+        st.session_state.metrics = edited_df
+        st.success("Database updated successfully.")
